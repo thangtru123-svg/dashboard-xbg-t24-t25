@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Vận Hành Vùng XBG – Tuần 24 & 25</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:#1a1a2e;padding:20px}
+  .hdr{background:linear-gradient(135deg,#0d2b6b,#1a56c4);color:#fff;padding:28px 36px;border-radius:14px;margin-bottom:28px;text-align:center;box-shadow:0 4px 18px rgba(13,43,107,.35)}
+  .hdr h1{font-size:26px;font-weight:800;letter-spacing:.5px;margin-bottom:8px}
+  .hdr p{font-size:14px;opacity:.85}
+  .section{background:#fff;border-radius:12px;padding:24px 28px;margin-bottom:24px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+  .sec-title{font-size:19px;font-weight:800;color:#0d2b6b;margin-bottom:6px;padding-bottom:10px;border-bottom:3px solid #1a56c4;display:flex;align-items:center;gap:8px}
+  .sec-desc{font-size:13px;color:#666;margin-bottom:14px}
+  .scroll-box{overflow-y:auto;max-height:560px;border-radius:6px;border:1px solid #dde}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{background:#0d2b6b;color:#fff;padding:10px 12px;text-align:center;white-space:nowrap;font-size:13.5px;font-weight:700;position:sticky;top:0;z-index:2}
+  td{padding:8px 12px;border:1px solid #dde;text-align:center;vertical-align:middle}
+  tr:nth-child(even) td{background:#f4f7ff}
+  tr:hover td{background:#e3eaff!important}
+  .left{text-align:left!important}
+  .bold{font-weight:700}
+  .grand-total td{background:#0d2b6b!important;color:#fff!important;font-weight:800!important;font-size:14.5px!important}
+  .red-row td{background:#ffe5e5!important;color:#900!important;font-weight:600}
+  .red-cell{background:#e53e3e!important;color:#fff!important;font-weight:800!important;border-radius:4px}
+  .up{color:#e53e3e;font-weight:700}
+  .dn{color:#2e7d32;font-weight:700}
+  .up2{color:#2e7d32;font-weight:700}
+  .dn2{color:#e53e3e;font-weight:700}
+  .neutral{color:#666}
+  .analysis{margin-top:16px;padding:14px 18px;background:#f0f5ff;border-left:4px solid #1a56c4;border-radius:6px;font-size:13.5px;line-height:1.8;color:#333}
+  .analysis b{color:#0d2b6b}
+  .bat-on-tag{background:#e53e3e;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:700;margin-left:4px}
+  .loading{text-align:center;padding:60px;color:#555;font-size:16px}
+  .sub-title{font-size:16px;font-weight:700;color:#0d2b6b;margin:20px 0 10px;padding:8px 0;border-bottom:2px solid #cdd8f5}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>📊 DASHBOARD VẬN HÀNH TỔNG QUAN VÙNG XBG</h1>
+  <p>So sánh Tuần 24 (2026/24) và Tuần 25 (2026/25) &nbsp;|&nbsp; Cập nhật: 22/06/2026</p>
+</div>
+
+<div id="app"><div class="loading">⏳ Đang tải dữ liệu từ Google Sheets...</div></div>
+
+<script>
+// ─── CSV PARSER ──────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const parseRow = l => {
+    const cols=[]; let cur='', inQ=false;
+    for(let i=0;i<l.length;i++){
+      const c=l[i];
+      if(c==='"') inQ=!inQ;
+      else if(c===','&&!inQ){cols.push(cur);cur='';}
+      else cur+=c;
+    }
+    cols.push(cur); return cols;
+  };
+  const hdrs = parseRow(lines[0]);
+  return lines.slice(1).filter(l=>l.trim()).map(l=>{
+    const v=parseRow(l), obj={};
+    hdrs.forEach((h,i)=>obj[h]=v[i]||'');
+    return obj;
+  });
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const pct  = v => parseFloat((v||'').replace('%',''))||0;
+const num  = v => parseInt((v||'').replace(/,/g,''))||0;
+const fV   = n => (n||0).toLocaleString('vi-VN');
+const fP   = n => n.toFixed(2)+'%';
+const fL   = n => n.toFixed(2);
+
+function dPct(v25,v24,goodUp=true){
+  const d=v25-v24;
+  if(Math.abs(d)<0.001) return '<span class="neutral">–</span>';
+  const cls=(d>0)===goodUp?'up2':'dn2';
+  const sign=d>0?'▲':'▼';
+  return `<span class="${cls}">${sign}${Math.abs(d).toFixed(2)}%</span>`;
+}
+function dNum(v25,v24,goodUp=false){
+  const d=v25-v24;
+  if(d===0) return '<span class="neutral">–</span>';
+  const cls=(d>0)===goodUp?'up2':'dn2';
+  const sign=d>0?'▲':'▼';
+  return `<span class="${cls}">${sign}${Math.abs(d).toLocaleString()}</span>`;
+}
+function dPctRaw(v25,v24,goodUp=true){
+  const d=v25-v24;
+  if(Math.abs(d)<0.001) return '<span class="neutral">–</span>';
+  const cls=(d>0)===goodUp?'up2':'dn2';
+  const sign=d>0?'▲':'▼';
+  return `<span class="${cls}">${sign}${Math.abs(d*100).toFixed(2)}%</span>`;
+}
+
+// ─── FETCH ───────────────────────────────────────────────────────────────────
+const SID1 = '1s8OJZ3s7gdQb0iP1KZ_sYVWKSoR8mCWDXzUEyjARkrY';
+const SID2 = '12WWRYyUS3MynoRW_qo_8nnEX9JFJL4Vmk2imvyz21gM';
+const f = (id,s) => fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(s)}`).then(r=>r.text());
+const fGid = (id,gid) => fetch(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}`).then(r=>r.text());
+
+// ─── RENDER HELPERS ──────────────────────────────────────────────────────────
+function sec(id,icon,title,desc,html){
+  return `<div class="section" id="${id}">
+    <div class="sec-title">${icon} ${title}</div>
+    ${desc?`<div class="sec-desc">${desc}</div>`:''}
+    ${html}
+  </div>`;
+}
+
+// ─── TABLE 0: OVERVIEW ───────────────────────────────────────────────────────
+function buildOverview(data){
+  const byType={};
+  data.forEach(r=>{
+    const loai=r['Loại Hàng']||r['Chi tiết'];
+    if(!byType[loai]) byType[loai]={};
+    byType[loai][r['Time']]={
+      vol:num(r['Volume']),
+      gan:pct(r['% Gán']),
+      gtc:pct(r['% GTC']),
+      tra:pct(r['% Chuyển trả']),
+      lt:parseFloat(r['Leadtime'])||0
+    };
+  });
+  const types=['Hàng Mới Ca 1','Hàng Mới Ca 2','Hàng Tồn'];
+
+  // Grand total
+  let tvol24=0,tvol25=0,tgan24=0,tgan25=0,tgtc24=0,tgtc25=0,ttra24=0,ttra25=0;
+  types.forEach(t=>{
+    const v24=byType[t]?.['2026/24']||{vol:0};
+    const v25=byType[t]?.['2026/25']||{vol:0};
+    tvol24+=v24.vol||0; tvol25+=v25.vol||0;
+  });
+
+  let rows='';
+  types.forEach(t=>{
+    const v24=byType[t]?.['2026/24']||{};
+    const v25=byType[t]?.['2026/25']||{};
+    rows+=`<tr>
+      <td class="left bold">${t}</td>
+      <td>${fV(v24.vol)}</td><td>${fV(v25.vol)}</td><td>${dNum(v25.vol,v24.vol)}</td>
+      <td>${fP(v24.gan)}</td><td>${fP(v25.gan)}</td><td>${dPct(v25.gan,v24.gan)}</td>
+      <td>${fP(v24.gtc)}</td><td>${fP(v25.gtc)}</td><td>${dPct(v25.gtc,v24.gtc)}</td>
+      <td>${fP(v24.tra)}</td><td>${fP(v25.tra)}</td><td>${dPct(v25.tra,v24.tra,false)}</td>
+      <td>${fL(v24.lt||0)}</td><td>${fL(v25.lt||0)}</td>
+    </tr>`;
+  });
+
+  // Tính tổng GTC, Gán theo Volume
+  let volGTC24=0,volGTC25=0,volGan24=0,volGan25=0,volTra24=0,volTra25=0,vol24=0,vol25=0;
+  data.forEach(r=>{
+    const v=num(r['Volume']),gan=pct(r['% Gán']),gtc=pct(r['% GTC']),tra=pct(r['% Chuyển trả']);
+    if(r['Time']==='2026/24'){vol24+=v;volGTC24+=v*gtc/100;volGan24+=v*gan/100;volTra24+=v*tra/100;}
+    else if(r['Time']==='2026/25'){vol25+=v;volGTC25+=v*gtc/100;volGan25+=v*gan/25*100;volTra25+=v*tra/100;}
+  });
+
+  // Grand total row (simple totals)
+  let t24={vol:0,gan:0,gtc:0,tra:0}, t25={vol:0,gan:0,gtc:0,tra:0};
+  types.forEach(t=>{
+    const v24=byType[t]?.['2026/24']||{}; const v25=byType[t]?.['2026/25']||{};
+    t24.vol+=v24.vol||0; t24.gan+=v24.gan||0; t24.gtc+=v24.gtc||0; t24.tra+=v24.tra||0;
+    t25.vol+=v25.vol||0; t25.gan+=v25.gan||0; t25.gtc+=v25.gtc||0; t25.tra+=v25.tra||0;
+  });
+
+  // Weighted avg for %, use data directly
+  const ov24=data.filter(r=>r['Time']==='2026/24');
+  const ov25=data.filter(r=>r['Time']==='2026/25');
+  const wAvg=(rows,field)=>{
+    const tot=rows.reduce((s,r)=>s+num(r['Volume']),0);
+    const w=rows.reduce((s,r)=>s+num(r['Volume'])*pct(r[field])/100,0);
+    return tot>0?(w/tot*100):0;
+  };
+  const ag24={vol:ov24.reduce((s,r)=>s+num(r['Volume']),0),gan:wAvg(ov24,'% Gán'),gtc:wAvg(ov24,'% GTC'),tra:wAvg(ov24,'% Chuyển trả')};
+  const ag25={vol:ov25.reduce((s,r)=>s+num(r['Volume']),0),gan:wAvg(ov25,'% Gán'),gtc:wAvg(ov25,'% GTC'),tra:wAvg(ov25,'% Chuyển trả')};
+
+  const grandRow=`<tr class="grand-total">
+    <td class="left">GRAND TOTAL</td>
+    <td>${fV(ag24.vol)}</td><td>${fV(ag25.vol)}</td><td>${dNum(ag25.vol,ag24.vol)}</td>
+    <td>${fP(ag24.gan)}</td><td>${fP(ag25.gan)}</td><td>${dPct(ag25.gan,ag24.gan)}</td>
+    <td>${fP(ag24.gtc)}</td><td>${fP(ag25.gtc)}</td><td>${dPct(ag25.gtc,ag24.gtc)}</td>
+    <td>${fP(ag24.tra)}</td><td>${fP(ag25.tra)}</td><td>${dPct(ag25.tra,ag24.tra,false)}</td>
+    <td>–</td><td>–</td>
+  </tr>`;
+
+  const tbl=`<table>
+    <thead><tr>
+      <th rowspan="2" style="min-width:140px">Loại Hàng</th>
+      <th colspan="3">Volume</th>
+      <th colspan="3">% Gán</th>
+      <th colspan="3">% GTC</th>
+      <th colspan="3">% Chuyển trả</th>
+      <th colspan="2">Leadtime (ngày)</th>
+    </tr><tr>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th>
+    </tr></thead>
+    <tbody>${rows}${grandRow}</tbody>
+  </table>`;
+
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét tổng quan:</b><br>
+    • <b>Hàng Mới Ca 1:</b> Volume tuần 25 giảm 74.357 đơn (-12,4%) so tuần 24. Tỉ lệ GTC cải thiện nhẹ từ 70,38% → 71,13% (+0,75%), tuy nhiên % chuyển trả tăng từ 1,11% → 1,35% cần theo dõi.<br>
+    • <b>Hàng Mới Ca 2:</b> Volume giảm mạnh từ 108.795 → 76.065 (-30,1%). Tỉ lệ GTC tăng 3,21% (25,33% → 28,54%) – tín hiệu tích cực nhưng tổng thể vẫn rất thấp, cần cải thiện đẩy gán cho Ca 2.<br>
+    • <b>Hàng Tồn:</b> Volume giảm 37.112 đơn (-7,9%), tỉ lệ GTC giảm từ 39,91% → 37,65% (-2,26%). Đây là điểm đáng lo ngại nhất – hàng tồn nhiều mà GTC lại giảm, đồng thời % chuyển trả tăng từ 5,70% → 6,76%. Leadtime tăng nhẹ (45,67 → 48,99 ngày).
+  </div>`;
+  return tbl+analysis;
+}
+
+// ─── TABLE 1: GTC THEO AM ────────────────────────────────────────────────────
+function buildGTCByAM(data){
+  const map={};
+  data.forEach(r=>{
+    const am=r['Chi tiết'];
+    if(!map[am]) map[am]={};
+    const t=r['Time'];
+    map[am][t]={vol:num(r['Volume']),gan:pct(r['% Gán']),gtc:pct(r['% GTC']),tra:pct(r['% Chuyển trả'])};
+  });
+
+  // Sort by GTC T25 ascending (lowest first)
+  const ams=Object.keys(map).filter(a=>a&&a.trim()&&a!=='-'&&a!=='XBG');
+  ams.sort((a,b)=>{
+    const ga=(map[a]?.['2026/25']?.gtc||0), gb=(map[b]?.['2026/25']?.gtc||0);
+    return ga-gb;
+  });
+
+  // Grand total
+  const all24=data.filter(r=>r['Time']==='2026/24');
+  const all25=data.filter(r=>r['Time']==='2026/25');
+  const wAvg=(rows,f)=>{const tot=rows.reduce((s,r)=>s+num(r['Volume']),0);const w=rows.reduce((s,r)=>s+num(r['Volume'])*pct(r[f])/100,0);return tot>0?w/tot*100:0;};
+  const gt24={vol:all24.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all24,'% GTC'),gan:wAvg(all24,'% Gán'),tra:wAvg(all24,'% Chuyển trả')};
+  const gt25={vol:all25.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all25,'% GTC'),gan:wAvg(all25,'% Gán'),tra:wAvg(all25,'% Chuyển trả')};
+
+  let rows='';
+  ams.forEach((am,i)=>{
+    const v24=map[am]?.['2026/24']||{vol:0,gtc:0,gan:0,tra:0};
+    const v25=map[am]?.['2026/25']||{vol:0,gtc:0,gan:0,tra:0};
+    rows+=`<tr>
+      <td>${i+1}</td>
+      <td class="left bold">${am}</td>
+      <td>${fV(v24.vol)}</td><td>${fV(v25.vol)}</td><td>${dNum(v25.vol,v24.vol)}</td>
+      <td>${fP(v24.gan)}</td><td>${fP(v25.gan)}</td><td>${dPct(v25.gan,v24.gan)}</td>
+      <td>${fP(v24.gtc)}</td><td>${fP(v25.gtc)}</td><td>${dPct(v25.gtc,v24.gtc)}</td>
+      <td>${fP(v24.tra)}</td><td>${fP(v25.tra)}</td><td>${dPct(v25.tra,v24.tra,false)}</td>
+    </tr>`;
+  });
+
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td>
+    <td>${fV(gt24.vol)}</td><td>${fV(gt25.vol)}</td><td>${dNum(gt25.vol,gt24.vol)}</td>
+    <td>${fP(gt24.gan)}</td><td>${fP(gt25.gan)}</td><td>${dPct(gt25.gan,gt24.gan)}</td>
+    <td>${fP(gt24.gtc)}</td><td>${fP(gt25.gtc)}</td><td>${dPct(gt25.gtc,gt24.gtc)}</td>
+    <td>${fP(gt24.tra)}</td><td>${fP(gt25.tra)}</td><td>${dPct(gt25.tra,gt24.tra,false)}</td>
+  </tr>`;
+
+  // Find worst and best
+  const sorted=[...ams];
+  const worst=sorted[0], best=sorted[sorted.length-1];
+  const worstGtc25=map[worst]?.['2026/25']?.gtc||0;
+  const bestGtc25=map[best]?.['2026/25']?.gtc||0;
+  const declined=ams.filter(a=>(map[a]?.['2026/25']?.gtc||0)<(map[a]?.['2026/24']?.gtc||0));
+
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét GTC theo AM:</b><br>
+    • AM có tỉ lệ GTC thấp nhất tuần 25: <b>${worst}</b> (${fP(worstGtc25)}) – cần ưu tiên hỗ trợ và theo dõi sát.<br>
+    • AM có tỉ lệ GTC cao nhất tuần 25: <b>${best}</b> (${fP(bestGtc25)}).<br>
+    • Có <b>${declined.length}/${ams.length} AM</b> bị giảm tỉ lệ GTC so với tuần 24, cần rà soát nguyên nhân (thiếu nhân lực, vùng khó, chất lượng đơn...).<br>
+    • Tổng Volume toàn vùng tuần 25 giảm so tuần 24 nhưng tỉ lệ GTC tổng thể có tín hiệu cải thiện nhẹ.
+  </div>`;
+
+  return `<table>
+    <thead><tr>
+      <th>STT</th><th style="min-width:180px">AM</th>
+      <th colspan="3">Volume</th><th colspan="3">% Gán</th>
+      <th colspan="3">% GTC</th><th colspan="3">% Chuyển trả</th>
+    </tr><tr>
+      <th></th><th></th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+    </tr></thead>
+    <tbody>${rows}${grand}</tbody>
+  </table>`+analysis;
+}
+
+// ─── TABLE 2: GTC THEO BƯU CỤC ──────────────────────────────────────────────
+function buildGTCByBC(data){
+  const map={};
+  data.forEach(r=>{
+    const bc=r['Chi tiết'];
+    if(!map[bc]) map[bc]={am:r['Cấp Quản Lý']||''};
+    const t=r['Time'];
+    map[bc][t]={vol:num(r['Volume']),gan:pct(r['% Gán']),gtc:pct(r['% GTC']),tra:pct(r['% Chuyển trả'])};
+  });
+  const bcs=Object.keys(map).filter(b=>b&&b.trim());
+  bcs.sort((a,b)=>(map[a]?.['2026/25']?.gtc||0)-(map[b]?.['2026/25']?.gtc||0));
+
+  const all24=data.filter(r=>r['Time']==='2026/24');
+  const all25=data.filter(r=>r['Time']==='2026/25');
+  const wAvg=(rows,f)=>{const tot=rows.reduce((s,r)=>s+num(r['Volume']),0);const w=rows.reduce((s,r)=>s+num(r['Volume'])*pct(r[f])/100,0);return tot>0?w/tot*100:0;};
+  const gt24={vol:all24.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all24,'% GTC'),gan:wAvg(all24,'% Gán'),tra:wAvg(all24,'% Chuyển trả')};
+  const gt25={vol:all25.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all25,'% GTC'),gan:wAvg(all25,'% Gán'),tra:wAvg(all25,'% Chuyển trả')};
+
+  let rows='';
+  bcs.forEach((bc,i)=>{
+    const v24=map[bc]?.['2026/24']||{vol:0,gtc:0,gan:0,tra:0};
+    const v25=map[bc]?.['2026/25']||{vol:0,gtc:0,gan:0,tra:0};
+    rows+=`<tr>
+      <td>${i+1}</td>
+      <td class="left bold">${bc}</td>
+      <td class="left">${map[bc].am}</td>
+      <td>${fV(v24.vol)}</td><td>${fV(v25.vol)}</td><td>${dNum(v25.vol,v24.vol)}</td>
+      <td>${fP(v24.gan)}</td><td>${fP(v25.gan)}</td><td>${dPct(v25.gan,v24.gan)}</td>
+      <td>${fP(v24.gtc)}</td><td>${fP(v25.gtc)}</td><td>${dPct(v25.gtc,v24.gtc)}</td>
+      <td>${fP(v24.tra)}</td><td>${fP(v25.tra)}</td><td>${dPct(v25.tra,v24.tra,false)}</td>
+    </tr>`;
+  });
+
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td><td></td>
+    <td>${fV(gt24.vol)}</td><td>${fV(gt25.vol)}</td><td>${dNum(gt25.vol,gt24.vol)}</td>
+    <td>${fP(gt24.gan)}</td><td>${fP(gt25.gan)}</td><td>${dPct(gt25.gan,gt24.gan)}</td>
+    <td>${fP(gt24.gtc)}</td><td>${fP(gt25.gtc)}</td><td>${dPct(gt25.gtc,gt24.gtc)}</td>
+    <td>${fP(gt24.tra)}</td><td>${fP(gt25.tra)}</td><td>${dPct(gt25.tra,gt24.tra,false)}</td>
+  </tr>`;
+
+  const declined=bcs.filter(b=>(map[b]?.['2026/25']?.gtc||0)<(map[b]?.['2026/24']?.gtc||0));
+  const worst5=bcs.slice(0,5).map(b=>`${b} (${fP(map[b]?.['2026/25']?.gtc||0)})`).join(', ');
+
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét GTC theo Bưu Cục:</b><br>
+    • 5 Bưu Cục có tỉ lệ GTC thấp nhất tuần 25: <b>${worst5}</b>.<br>
+    • Có <b>${declined.length}/${bcs.length} Bưu Cục</b> giảm tỉ lệ GTC so tuần 24 – cần họp rà soát với các AM phụ trách.<br>
+    • Tổng GTC toàn vùng theo Bưu Cục: T24 = ${fP(gt24.gtc)}, T25 = ${fP(gt25.gtc)} (${gt25.gtc>=gt24.gtc?'tăng':'giảm'} ${Math.abs(gt25.gtc-gt24.gtc).toFixed(2)}%).
+  </div>`;
+
+  const theadHtml=`<thead><tr>
+    <th>STT</th><th style="min-width:180px">Bưu Cục</th><th>AM Phụ Trách</th>
+    <th colspan="3">Volume</th><th colspan="3">% Gán</th>
+    <th colspan="3">% GTC</th><th colspan="3">% Chuyển trả</th>
+  </tr><tr>
+    <th></th><th></th><th></th>
+    <th>T24</th><th>T25</th><th>±</th>
+    <th>T24</th><th>T25</th><th>±</th>
+    <th>T24</th><th>T25</th><th>±</th>
+    <th>T24</th><th>T25</th><th>±</th>
+  </tr></thead>`;
+
+  return `<div class="scroll-box">
+    <table>${theadHtml}<tbody>${rows}${grand}</tbody></table>
+  </div>`+analysis;
+}
+
+// ─── TABLES 3,4,5: AGING ─────────────────────────────────────────────────────
+function buildAgingTable(title, agingArr, dates){
+  const labels=['15/06','16/06','17/06','18/06','19/06','20/06','21/06'];
+  const dayIdx6=5, dayIdx7=6; // 2 ngày gần nhất = index 5 và 6
+
+  let rows='';
+  let totalByDate=new Array(7).fill(0);
+
+  agingArr.forEach((item,i)=>{
+    const {name,vals,total}=item;
+    const d6=vals[dayIdx6]||0, d7=vals[dayIdx7]||0;
+    const diff=d7-d6;
+    const diffStr=diff===0?'<span class="neutral">–</span>':(diff>0?`<span class="dn2">▲${diff.toLocaleString()}</span>`:`<span class="up2">▼${Math.abs(diff).toLocaleString()}</span>`);
+    vals.forEach((v,j)=>totalByDate[j]+=v);
+    rows+=`<tr>
+      <td>${i+1}</td>
+      <td class="left bold">${name}</td>
+      ${vals.map(v=>`<td>${v.toLocaleString()}</td>`).join('')}
+      <td>${diffStr}</td>
+      <td class="bold">${total.toLocaleString()}</td>
+    </tr>`;
+  });
+
+  // Grand total row
+  const gt6=totalByDate[dayIdx6], gt7=totalByDate[dayIdx7];
+  const gtDiff=gt7-gt6;
+  const gtDiffStr=gtDiff===0?'<span class="neutral">–</span>':(gtDiff>0?`<span class="dn2">▲${gtDiff.toLocaleString()}</span>`:`<span class="up2">▼${Math.abs(gtDiff).toLocaleString()}</span>`);
+  const gtTotal=totalByDate.reduce((a,b)=>a+b,0);
+  rows+=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td>
+    ${totalByDate.map(v=>`<td>${v.toLocaleString()}</td>`).join('')}
+    <td>${gtDiffStr}</td>
+    <td>${gtTotal.toLocaleString()}</td>
+  </tr>`;
+
+  return `<div class="sub-title">${title}</div>
+  <table>
+    <thead><tr>
+      <th>STT</th><th style="min-width:160px">Tên</th>
+      ${labels.map(l=>`<th>${l}</th>`).join('')}
+      <th>± (20↔21)</th><th>Tổng</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ─── TABLE 6: TỈ LỆ TRẢ AM ───────────────────────────────────────────────────
+function buildReturnAM(data){
+  const map={};
+  data.forEach(r=>{
+    const am=r['AM'];
+    if(!map[am]) map[am]={};
+    map[am][r['Time']]=pct(r['% Return']);
+  });
+  const ams=Object.keys(map).filter(a=>a&&a.trim()&&a!=='-');
+  ams.sort((a,b)=>(map[b]?.['2026/25']||0)-(map[a]?.['2026/25']||0));
+
+  const all24=data.filter(r=>r['Time']==='2026/24');
+  const all25=data.filter(r=>r['Time']==='2026/25');
+  const avg=(rows)=>rows.length?rows.reduce((s,r)=>s+pct(r['% Return']),0)/rows.length:0;
+  const gt24=avg(all24), gt25=avg(all25);
+
+  let rows='';
+  ams.forEach((am,i)=>{
+    const v24=map[am]?.['2026/24']||0;
+    const v25=map[am]?.['2026/25']||0;
+    rows+=`<tr>
+      <td>${i+1}</td>
+      <td class="left bold">${am}</td>
+      <td>${fP(v24)}</td><td>${fP(v25)}</td><td>${dPct(v25,v24,false)}</td>
+    </tr>`;
+  });
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL (Trung bình)</td>
+    <td>${fP(gt24)}</td><td>${fP(gt25)}</td><td>${dPct(gt25,gt24,false)}</td>
+  </tr>`;
+
+  const worst3=ams.slice(0,3).map(a=>`${a} (${fP(map[a]?.['2026/25']||0)})`).join(', ');
+  const increased=ams.filter(a=>(map[a]?.['2026/25']||0)>(map[a]?.['2026/24']||0));
+
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét Tỉ lệ trả theo AM:</b><br>
+    • Top AM có tỉ lệ trả cao nhất tuần 25: <b>${worst3}</b> – cần kiểm tra chất lượng giao hàng, phân tích lý do khách từ chối nhận.<br>
+    • Có <b>${increased.length}/${ams.length} AM</b> tăng tỉ lệ trả so tuần 24. Tỉ lệ trả TB toàn vùng: T24 = ${fP(gt24)}, T25 = ${fP(gt25)}.
+  </div>`;
+
+  return `<table>
+    <thead><tr>
+      <th>STT</th><th style="min-width:180px">AM</th>
+      <th>% Trả T24</th><th>% Trả T25</th><th>±</th>
+    </tr></thead>
+    <tbody>${rows}${grand}</tbody>
+  </table>`+analysis;
+}
+
+// ─── TABLE 7: TỈ LỆ TRẢ BƯU CỤC ─────────────────────────────────────────────
+function buildReturnBC(data){
+  const map={};
+  data.forEach(r=>{
+    const bc=r['Bưu Cục'];
+    if(!map[bc]) map[bc]={am:r['AM']||''};
+    const rt=parseFloat((r['% Return']||'').replace('%',''))||0;
+    // if rt > 1 it's already %, else multiply by 100
+    map[bc][r['Time']]=rt>1?rt:rt*100;
+  });
+  const bcs=Object.keys(map).filter(b=>b&&b.trim());
+  bcs.sort((a,b)=>(map[b]?.['2026/25']||0)-(map[a]?.['2026/25']||0));
+
+  const getRt=(r)=>{const rt=parseFloat((r['% Return']||'').replace('%',''))||0;return rt>1?rt:rt*100;};
+  const all24=data.filter(r=>r['Time']==='2026/24');
+  const all25=data.filter(r=>r['Time']==='2026/25');
+  const avg=(rows)=>rows.length?rows.reduce((s,r)=>s+getRt(r),0)/rows.length:0;
+  const gt24=avg(all24), gt25=avg(all25);
+
+  let rows='';
+  bcs.forEach((bc,i)=>{
+    const v24=map[bc]?.['2026/24']||0;
+    const v25=map[bc]?.['2026/25']||0;
+    rows+=`<tr>
+      <td>${i+1}</td>
+      <td class="left bold">${bc}</td>
+      <td class="left">${map[bc].am}</td>
+      <td>${fP(v24)}</td><td>${fP(v25)}</td><td>${dPct(v25,v24,false)}</td>
+    </tr>`;
+  });
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL (Trung bình)</td><td></td>
+    <td>${fP(gt24)}</td><td>${fP(gt25)}</td><td>${dPct(gt25,gt24,false)}</td>
+  </tr>`;
+
+  const worst5=bcs.slice(0,5).map(b=>`${b} (${fP(map[b]?.['2026/25']||0)})`).join(', ');
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét Tỉ lệ trả theo Bưu Cục:</b><br>
+    • Top 5 Bưu Cục có tỉ lệ trả cao nhất tuần 25: <b>${worst5}</b>.<br>
+    • AM phụ trách cần rà soát nguyên nhân và có kế hoạch xử lý các đơn bị trả tái diễn. TB toàn vùng T25: ${fP(gt25)}.
+  </div>`;
+
+  return `<div class="scroll-box">
+    <table>
+      <thead><tr>
+        <th>STT</th><th style="min-width:180px">Bưu Cục</th><th>AM Phụ Trách</th>
+        <th>% Trả T24</th><th>% Trả T25</th><th>±</th>
+      </tr></thead>
+      <tbody>${rows}${grand}</tbody>
+    </table>
+  </div>`+analysis;
+}
+
+// ─── TABLE 8: ONTIME GIAO AM ──────────────────────────────────────────────────
+function buildOntimeGiaoAM(data){
+  const map={};
+  data.forEach(r=>{
+    const am=r['Chi tiết'];
+    if(!map[am]) map[am]={};
+    map[am][r['Time']]={gtc:num(r['Đơn GTC']),ot:pct(r['%Ontime']),otVol:num(r['Đơn đúng Ontime'])};
+  });
+  const ams=Object.keys(map).filter(a=>a&&a.trim());
+  ams.sort((a,b)=>(map[a]?.['2026/25']?.ot||0)-(map[b]?.['2026/25']?.ot||0));
+
+  const THRESH=96;
+  let rows='';
+  let totGTC24=0,totGTC25=0,totOT24=0,totOT25=0;
+  ams.forEach((am,i)=>{
+    const v24=map[am]?.['2026/24']||{gtc:0,ot:0,otVol:0};
+    const v25=map[am]?.['2026/25']||{gtc:0,ot:0,otVol:0};
+    totGTC24+=v24.gtc; totGTC25+=v25.gtc;
+    totOT24+=v24.otVol; totOT25+=v25.otVol;
+    const red=v25.ot<THRESH;
+    rows+=`<tr${red?' class="red-row"':''}>
+      <td>${i+1}</td>
+      <td class="left bold">${am}</td>
+      <td>${fV(v24.gtc)}</td><td>${fV(v25.gtc)}</td><td>${dNum(v25.gtc,v24.gtc,true)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v24.ot)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v25.ot)}</td>
+      <td>${dPct(v25.ot,v24.ot)}</td>
+    </tr>`;
+  });
+  const gtOT24=totGTC24>0?totOT24/totGTC24*100:0;
+  const gtOT25=totGTC25>0?totOT25/totGTC25*100:0;
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td>
+    <td>${fV(totGTC24)}</td><td>${fV(totGTC25)}</td><td>${dNum(totGTC25,totGTC24,true)}</td>
+    <td>${fP(gtOT24)}</td><td>${fP(gtOT25)}</td><td>${dPct(gtOT25,gtOT24)}</td>
+  </tr>`;
+
+  const redAMs=ams.filter(a=>(map[a]?.['2026/25']?.ot||0)<THRESH);
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét Ontime Giao TTS theo AM:</b><br>
+    • <b>${redAMs.length}/${ams.length} AM</b> có Ontime giao &lt; 96% trong tuần 25 (tô đỏ): <b>${redAMs.slice(0,5).join(', ')}${redAMs.length>5?'...':''}</b>.<br>
+    • Ontime giao TB toàn vùng: T24 = ${fP(gtOT24)}, T25 = ${fP(gtOT25)} (${gtOT25>=gtOT24?'tăng ▲':'giảm ▼'}${Math.abs(gtOT25-gtOT24).toFixed(2)}%). Cần tăng cường kiểm soát chất lượng giao các AM dưới ngưỡng.
+  </div>`;
+
+  return `<table>
+    <thead><tr>
+      <th>STT</th><th style="min-width:180px">AM</th>
+      <th colspan="3">Đơn GTC</th><th colspan="3">% Ontime Giao</th>
+    </tr><tr>
+      <th></th><th></th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+    </tr></thead>
+    <tbody>${rows}${grand}</tbody>
+  </table>
+  <div style="margin-top:8px;font-size:12px;color:#e53e3e;font-weight:600">🔴 Các hàng tô đỏ = Ontime giao &lt; 96%</div>`+analysis;
+}
+
+// ─── TABLE 9: ONTIME GIAO BC ─────────────────────────────────────────────────
+function buildOntimeGiaoBC(data){
+  const map={};
+  data.forEach(r=>{
+    const bc=r['Chi tiết'];
+    if(!map[bc]) map[bc]={am:r['Quản lý']||''};
+    map[bc][r['Time']]={gtc:num(r['GTC']),ot:pct(r['%Ontime'])};
+  });
+  const bcs=Object.keys(map).filter(b=>b&&b.trim());
+  bcs.sort((a,b)=>(map[a]?.['2026/25']?.ot||0)-(map[b]?.['2026/25']?.ot||0));
+
+  const THRESH=96;
+  let rows='';
+  let totGTC24=0,totGTC25=0,totOT24w=0,totOT25w=0;
+  bcs.forEach((bc,i)=>{
+    const v24=map[bc]?.['2026/24']||{gtc:0,ot:0};
+    const v25=map[bc]?.['2026/25']||{gtc:0,ot:0};
+    totGTC24+=v24.gtc; totGTC25+=v25.gtc;
+    totOT24w+=v24.gtc*(v24.ot/100); totOT25w+=v25.gtc*(v25.ot/100);
+    const red=v25.ot<THRESH;
+    rows+=`<tr${red?' class="red-row"':''}>
+      <td>${i+1}</td>
+      <td class="left bold">${bc}</td>
+      <td class="left">${map[bc].am}</td>
+      <td>${fV(v24.gtc)}</td><td>${fV(v25.gtc)}</td><td>${dNum(v25.gtc,v24.gtc,true)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v24.ot)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v25.ot)}</td>
+      <td>${dPct(v25.ot,v24.ot)}</td>
+    </tr>`;
+  });
+  const gtOT24=totGTC24>0?totOT24w/totGTC24*100:0;
+  const gtOT25=totGTC25>0?totOT25w/totGTC25*100:0;
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td><td></td>
+    <td>${fV(totGTC24)}</td><td>${fV(totGTC25)}</td><td>${dNum(totGTC25,totGTC24,true)}</td>
+    <td>${fP(gtOT24)}</td><td>${fP(gtOT25)}</td><td>${dPct(gtOT25,gtOT24)}</td>
+  </tr>`;
+
+  const redBCs=bcs.filter(b=>(map[b]?.['2026/25']?.ot||0)<THRESH);
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét Ontime Giao TTS theo Bưu Cục:</b><br>
+    • <b>${redBCs.length}/${bcs.length} Bưu Cục</b> có Ontime giao &lt; 96% trong tuần 25.<br>
+    • Ontime giao TB toàn vùng: T24 = ${fP(gtOT24)}, T25 = ${fP(gtOT25)}. Các Bưu Cục tô đỏ cần có kế hoạch cải thiện ngay trong tuần 26.
+  </div>`;
+
+  return `<div class="scroll-box">
+    <table>
+      <thead><tr>
+        <th>STT</th><th style="min-width:180px">Bưu Cục</th><th>AM</th>
+        <th colspan="3">Đơn GTC</th><th colspan="3">% Ontime Giao</th>
+      </tr><tr>
+        <th></th><th></th><th></th>
+        <th>T24</th><th>T25</th><th>±</th>
+        <th>T24</th><th>T25</th><th>±</th>
+      </tr></thead>
+      <tbody>${rows}${grand}</tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:12px;color:#e53e3e;font-weight:600">🔴 Các hàng tô đỏ = Ontime giao &lt; 96%</div>`+analysis;
+}
+
+// ─── TABLE 10: ONTIME LẤY AM ─────────────────────────────────────────────────
+function buildOntimeLayAM(data){
+  const map={};
+  data.forEach(r=>{
+    const am=r['Chi tiết'];
+    if(!map[am]) map[am]={};
+    map[am][r['Time']]={ltc:num(r['LTC']),ot:pct(r['% OT']),otVol:num(r['Vol Đúng OT'])};
+  });
+  const ams=Object.keys(map).filter(a=>a&&a.trim());
+  ams.sort((a,b)=>(map[a]?.['2026/25']?.ot||0)-(map[b]?.['2026/25']?.ot||0));
+
+  const THRESH=80;
+  let rows='';
+  let totLTC24=0,totLTC25=0,totOT24=0,totOT25=0;
+  ams.forEach((am,i)=>{
+    const v24=map[am]?.['2026/24']||{ltc:0,ot:0,otVol:0};
+    const v25=map[am]?.['2026/25']||{ltc:0,ot:0,otVol:0};
+    totLTC24+=v24.ltc; totLTC25+=v25.ltc;
+    totOT24+=v24.otVol; totOT25+=v25.otVol;
+    const red=v25.ot<THRESH;
+    rows+=`<tr${red?' class="red-row"':''}>
+      <td>${i+1}</td>
+      <td class="left bold">${am}</td>
+      <td>${fV(v24.ltc)}</td><td>${fV(v25.ltc)}</td><td>${dNum(v25.ltc,v24.ltc,true)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v24.ot)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v25.ot)}</td>
+      <td>${dPct(v25.ot,v24.ot)}</td>
+      <td>${fV(v24.otVol)}</td><td>${fV(v25.otVol)}</td>
+    </tr>`;
+  });
+  const gtOT24=totLTC24>0?totOT24/totLTC24*100:0;
+  const gtOT25=totLTC25>0?totOT25/totLTC25*100:0;
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td>
+    <td>${fV(totLTC24)}</td><td>${fV(totLTC25)}</td><td>${dNum(totLTC25,totLTC24,true)}</td>
+    <td>${fP(gtOT24)}</td><td>${fP(gtOT25)}</td><td>${dPct(gtOT25,gtOT24)}</td>
+    <td>${fV(totOT24)}</td><td>${fV(totOT25)}</td>
+  </tr>`;
+
+  const redAMs=ams.filter(a=>(map[a]?.['2026/25']?.ot||0)<THRESH);
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét Ontime Lấy TTS theo AM:</b><br>
+    • <b>${redAMs.length}/${ams.length} AM</b> có Ontime lấy &lt; 80% tuần 25: <b>${redAMs.slice(0,5).join(', ')}${redAMs.length>5?'...':''}</b>.<br>
+    • Ontime lấy TB toàn vùng: T24 = ${fP(gtOT24)}, T25 = ${fP(gtOT25)}. Cần rà soát lịch lấy hàng, nhân lực và phương tiện tại các AM yếu để cải thiện trong tuần 26.
+  </div>`;
+
+  return `<table>
+    <thead><tr>
+      <th>STT</th><th style="min-width:180px">AM</th>
+      <th colspan="3">Đơn LTC</th><th colspan="3">% Ontime Lấy</th>
+      <th colspan="2">Đơn lấy đúng OT</th>
+    </tr><tr>
+      <th></th><th></th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th><th>±</th>
+      <th>T24</th><th>T25</th>
+    </tr></thead>
+    <tbody>${rows}${grand}</tbody>
+  </table>
+  <div style="margin-top:8px;font-size:12px;color:#e53e3e;font-weight:600">🔴 Các hàng tô đỏ = Ontime lấy &lt; 80%</div>`+analysis;
+}
+
+// ─── TABLE 11: ONTIME LẤY BC + TOP20 ────────────────────────────────────────
+function buildOntimeLayBC(data){
+  const map={};
+  data.forEach(r=>{
+    const bc=r['Chi tiết'];
+    if(!map[bc]) map[bc]={am:r['Quản lý']||''};
+    const ltc=num(r['LTC'])||parseInt(r['LTC'])||0;
+    map[bc][r['Time']]={ltc:ltc,ot:pct(r['% OT'])};
+  });
+  const bcs=Object.keys(map).filter(b=>b&&b.trim());
+  bcs.sort((a,b)=>(map[a]?.['2026/25']?.ot||0)-(map[b]?.['2026/25']?.ot||0));
+
+  const THRESH=80;
+  let rows='';
+  let totLTC24=0,totLTC25=0,totOT24w=0,totOT25w=0;
+  bcs.forEach((bc,i)=>{
+    const v24=map[bc]?.['2026/24']||{ltc:0,ot:0};
+    const v25=map[bc]?.['2026/25']||{ltc:0,ot:0};
+    totLTC24+=v24.ltc; totLTC25+=v25.ltc;
+    totOT24w+=v24.ltc*(v24.ot/100); totOT25w+=v25.ltc*(v25.ot/100);
+    const red=v25.ot<THRESH;
+    rows+=`<tr${red?' class="red-row"':''}>
+      <td>${i+1}</td>
+      <td class="left bold">${bc}</td>
+      <td class="left">${map[bc].am}</td>
+      <td>${fV(v24.ltc)}</td><td>${fV(v25.ltc)}</td><td>${dNum(v25.ltc,v24.ltc,true)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v24.ot)}</td>
+      <td${red?` class="red-cell"`:''}>${fP(v25.ot)}</td>
+      <td>${dPct(v25.ot,v24.ot)}</td>
+    </tr>`;
+  });
+  const gtOT24=totLTC24>0?totOT24w/totLTC24*100:0;
+  const gtOT25=totLTC25>0?totOT25w/totLTC25*100:0;
+  const grand=`<tr class="grand-total">
+    <td></td><td class="left">GRAND TOTAL</td><td></td>
+    <td>${fV(totLTC24)}</td><td>${fV(totLTC25)}</td><td>${dNum(totLTC25,totLTC24,true)}</td>
+    <td>${fP(gtOT24)}</td><td>${fP(gtOT25)}</td><td>${dPct(gtOT25,gtOT24)}</td>
+  </tr>`;
+
+  // Sub-table: Top 20 BC by LTC T25 with OT < 80%
+  const top20under80=bcs
+    .filter(b=>(map[b]?.['2026/25']?.ot||0)<THRESH)
+    .sort((a,b)=>(map[b]?.['2026/25']?.ltc||0)-(map[a]?.['2026/25']?.ltc||0))
+    .slice(0,20);
+
+  let sub20rows='';
+  top20under80.forEach((bc,i)=>{
+    const v24=map[bc]?.['2026/24']||{ltc:0,ot:0};
+    const v25=map[bc]?.['2026/25']||{ltc:0,ot:0};
+    sub20rows+=`<tr class="red-row">
+      <td>${i+1}</td>
+      <td class="left bold">${bc}</td>
+      <td class="left">${map[bc].am}</td>
+      <td>${fV(v24.ltc)}</td><td>${fV(v25.ltc)}</td>
+      <td class="red-cell">${fP(v24.ot)}</td>
+      <td class="red-cell">${fP(v25.ot)}</td>
+      <td>${dPct(v25.ot,v24.ot)}</td>
+    </tr>`;
+  });
+
+  const redBCs=bcs.filter(b=>(map[b]?.['2026/25']?.ot||0)<THRESH);
+  const analysis=`<div class="analysis">
+    <b>📌 Nhận xét Ontime Lấy TTS theo Bưu Cục:</b><br>
+    • <b>${redBCs.length}/${bcs.length} Bưu Cục</b> có Ontime lấy &lt; 80% tuần 25 – tỉ lệ đáng lo ngại.<br>
+    • Ontime lấy TB toàn vùng: T24 = ${fP(gtOT24)}, T25 = ${fP(gtOT25)}.<br>
+    • Bảng Top 20 dưới đây thể hiện các Bưu Cục có Volume LTC lớn nhất nhưng Ontime &lt; 80% – đây là nhóm ưu tiên can thiệp vì ảnh hưởng nhiều nhất đến KPI vùng.
+  </div>`;
+
+  const mainTable=`<div class="scroll-box">
+    <table>
+      <thead><tr>
+        <th>STT</th><th style="min-width:180px">Bưu Cục</th><th>AM</th>
+        <th colspan="3">Đơn LTC</th><th colspan="3">% Ontime Lấy</th>
+      </tr><tr>
+        <th></th><th></th><th></th>
+        <th>T24</th><th>T25</th><th>±</th>
+        <th>T24</th><th>T25</th><th>±</th>
+      </tr></thead>
+      <tbody>${rows}${grand}</tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:12px;color:#e53e3e;font-weight:600">🔴 Các hàng tô đỏ = Ontime lấy &lt; 80%</div>`;
+
+  const sub20Table=`<div class="sub-title">🚨 Top 20 Bưu Cục có Volume LTC lớn nhất nhưng Ontime Lấy &lt; 80%</div>
+  <table>
+    <thead><tr>
+      <th>STT</th><th style="min-width:180px">Bưu Cục</th><th>AM</th>
+      <th>LTC T24</th><th>LTC T25</th>
+      <th>% OT T24</th><th>% OT T25</th><th>±</th>
+    </tr></thead>
+    <tbody>${sub20rows}</tbody>
+  </table>`;
+
+  return mainTable+analysis+sub20Table;
+}
+
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
+async function main(){
+  try{
+    const app=document.getElementById('app');
+    app.innerHTML='<div class="loading">⏳ Đang tải dữ liệu (10 sheet)...</div>';
+
+    const [ov,s1,s2,s3raw,s4,s5,s6,s7,s8,s9]=await Promise.all([
+      fGid(SID1,'228718427'),
+      f(SID2,'Sheet 1'),
+      f(SID2,'Sheet 2'),
+      f(SID2,'Sheet 3'),
+      f(SID2,'Sheet 4'),
+      f(SID2,'Sheet 5'),
+      f(SID2,'Sheet 6'),
+      f(SID2,'Sheet 7'),
+      f(SID2,'Sheet 8'),
+      f(SID2,'Sheet 9'),
+    ]);
+
+    // Parse
+    const ovD=parseCSV(ov);
+    const s1D=parseCSV(s1), s2D=parseCSV(s2);
+    const s4D=parseCSV(s4), s5D=parseCSV(s5);
+    const s6D=parseCSV(s6), s7D=parseCSV(s7);
+    const s8D=parseCSV(s8), s9D=parseCSV(s9);
+
+    // Process aging (Sheet 3)
+    const lines3=s3raw.trim().split('\n');
+    const parseRow3=l=>{const cols=[];let cur='',inQ=false;for(let i=0;i<l.length;i++){const c=l[i];if(c==='"')inQ=!inQ;else if(c===','&&!inQ){cols.push(cur);cur='';}else cur+=c;}cols.push(cur);return cols;};
+    const DATES=['2026-06-15','2026-06-16','2026-06-17','2026-06-18','2026-06-19','2026-06-20','2026-06-21'];
+    const amAgMap={}, bcBatOnMap={}, bcNormMap={};
+    for(let i=1;i<lines3.length;i++){
+      const r=parseRow3(lines3[i]);
+      if(!r||r.length<13) continue;
+      const am=r[10], bc=r[2], date=r[11], note=r[12];
+      if(!am||!date) continue;
+      if(!amAgMap[am]) amAgMap[am]={};
+      amAgMap[am][date]=(amAgMap[am][date]||0)+1;
+      if(note==='Bưu Cục bất ổn'){
+        if(!bcBatOnMap[bc]) bcBatOnMap[bc]={};
+        bcBatOnMap[bc][date]=(bcBatOnMap[bc][date]||0)+1;
+      } else {
+        if(!bcNormMap[bc]) bcNormMap[bc]={};
+        bcNormMap[bc][date]=(bcNormMap[bc][date]||0)+1;
+      }
+    }
+    const toArr=m=>Object.entries(m).map(([name,bd])=>{
+      const vals=DATES.map(d=>bd[d]||0);
+      return {name,vals,total:vals.reduce((a,b)=>a+b,0)};
+    }).sort((a,b)=>b.total-a.total);
+
+    const amAging=toArr(amAgMap), bcBatOn=toArr(bcBatOnMap), bcNorm=toArr(bcNormMap);
+
+    // ─── BUILD HTML ─────────────────────────────────────────────────────────
+    app.innerHTML=`
+      ${sec('s0','📋','BẢNG TỔNG QUAN VÙNG XBG – SO SÁNH TUẦN 24 & 25','Số liệu tổng hợp toàn vùng theo Loại Hàng: Hàng Mới Ca 1, Ca 2, Hàng Tồn',buildOverview(ovD))}
+
+      ${sec('s1','📊','BẢNG 1 – GTC THEO AM','So sánh Volume và Tỉ lệ GTC giữa Tuần 24 và 25 theo từng AM | Sắp xếp theo % GTC từ thấp đến cao',buildGTCByAM(s1D))}
+
+      ${sec('s2','📊','BẢNG 2 – GTC THEO BƯU CỤC','So sánh Volume và Tỉ lệ GTC giữa Tuần 24 và 25 theo Bưu Cục | Sắp xếp theo % GTC từ thấp đến cao | Cuộn để xem thêm',buildGTCByBC(s2D))}
+
+      <div class="section" id="s345">
+        <div class="sec-title">⏰ BẢNG 3, 4, 5 – ĐƠN AGING &gt; 5 NGÀY (7 NGÀY LIÊN TIẾP: 15/06 – 21/06/2026)</div>
+        <div class="sec-desc">Sắp xếp theo Volume Aging từ cao xuống thấp | Cột "± (20↔21)" = so sánh 2 ngày gần nhất</div>
+        ${buildAgingTable('📌 BẢNG 3 – ĐƠN AGING > 5 NGÀY THEO AM',amAging,DATES)}
+        ${buildAgingTable('🚨 BẢNG 4 – ĐƠN AGING > 5 NGÀY – BƯU CỤC BẤT ỔN',bcBatOn,DATES)}
+        ${buildAgingTable('📦 BẢNG 5 – ĐƠN AGING > 5 NGÀY – BƯU CỤC THÔNG THƯỜNG',bcNorm,DATES)}
+        <div class="analysis">
+          <b>📌 Nhận xét Đơn Aging > 5 ngày:</b><br>
+          • Tổng số đơn Aging > 5 ngày trong 7 ngày quan sát: <b>${(amAging.reduce((s,a)=>s+a.total,0)).toLocaleString()}</b> lượt đơn (một đơn có thể xuất hiện nhiều ngày).<br>
+          • Có <b>${bcBatOn.length} Bưu Cục bất ổn</b> với đơn tồn kéo dài – cần giám sát đặc biệt và có phương án hỗ trợ cụ thể (tăng chuyến, điều phối nhân lực, kiểm tra vùng giao).<br>
+          • So sánh ngày 20/06 và 21/06: Nếu số đơn tăng ▲ = tình trạng xấu đi, cần báo cáo khẩn và xử lý ngay.
+        </div>
+      </div>
+
+      ${sec('s6','↩️','BẢNG 6 – TỈ LỆ TRẢ THEO AM','So sánh tỉ lệ chuyển trả Tuần 24 và 25 theo AM | Sắp xếp từ cao xuống thấp',buildReturnAM(s4D))}
+
+      ${sec('s7','↩️','BẢNG 7 – TỈ LỆ TRẢ THEO BƯU CỤC','So sánh tỉ lệ chuyển trả Tuần 24 và 25 theo Bưu Cục | Sắp xếp từ cao xuống thấp | Cuộn để xem thêm',buildReturnBC(s5D))}
+
+      ${sec('s8','🚚','BẢNG 8 – ONTIME GIAO TTS THEO AM','So sánh Đơn GTC và % Ontime Giao Tuần 24 & 25 | Sắp xếp % Ontime từ thấp đến cao | 🔴 Ontime &lt; 96%',buildOntimeGiaoAM(s6D))}
+
+      ${sec('s9','🚚','BẢNG 9 – ONTIME GIAO TTS THEO BƯU CỤC','So sánh Đơn GTC và % Ontime Giao Tuần 24 & 25 | Sắp xếp % Ontime từ thấp đến cao | 🔴 Ontime &lt; 96% | Cuộn để xem thêm',buildOntimeGiaoBC(s7D))}
+
+      ${sec('s10','📦','BẢNG 10 – ONTIME LẤY TTS THEO AM','So sánh Đơn LTC, % Ontime Lấy và Đơn lấy đúng OT Tuần 24 & 25 | Sắp xếp % Ontime từ thấp đến cao | 🔴 Ontime &lt; 80%',buildOntimeLayAM(s8D))}
+
+      ${sec('s11','📦','BẢNG 11 – ONTIME LẤY TTS THEO BƯU CỤC','So sánh Đơn LTC và % Ontime Lấy Tuần 24 & 25 | Sắp xếp % Ontime từ thấp đến cao | 🔴 Ontime &lt; 80% | Top 20 BC Volume lớn nhưng OT thấp',buildOntimeLayBC(s9D))}
+
+      <div style="text-align:center;padding:24px;color:#888;font-size:12px">
+        Dashboard tự động tải dữ liệu từ Google Sheets | Vùng XBG | Cập nhật: 22/06/2026
+      </div>
+    `;
+  } catch(e){
+    document.getElementById('app').innerHTML=`<div class="loading" style="color:red">❌ Lỗi tải dữ liệu: ${e.message}</div>`;
+    console.error(e);
+  }
+}
+main();
+</script>
+</body>
+</html>
