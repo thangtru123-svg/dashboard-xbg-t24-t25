@@ -6,40 +6,96 @@
 <title>Dashboard Vận Hành Vùng XBG – Tuần 24 & 25</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:#1a1a2e;padding:20px}
-  .hdr{background:linear-gradient(135deg,#0d2b6b,#1a56c4);color:#fff;padding:28px 36px;border-radius:14px;margin-bottom:28px;text-align:center;box-shadow:0 4px 18px rgba(13,43,107,.35)}
-  .hdr h1{font-size:26px;font-weight:800;letter-spacing:.5px;margin-bottom:8px}
-  .hdr p{font-size:14px;opacity:.85}
-  .section{background:#fff;border-radius:12px;padding:24px 28px;margin-bottom:24px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
-  .sec-title{font-size:19px;font-weight:800;color:#0d2b6b;margin-bottom:6px;padding-bottom:10px;border-bottom:3px solid #1a56c4;display:flex;align-items:center;gap:8px}
-  .sec-desc{font-size:13px;color:#666;margin-bottom:14px}
-  .scroll-box{overflow-y:auto;max-height:560px;border-radius:6px;border:1px solid #dde}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:linear-gradient(160deg,#e8eef8 0%,#f0f4fb 100%);color:#1a1a2e;padding:24px;min-height:100vh}
+  /* ── HEADER ── */
+  .hdr{
+    background:linear-gradient(135deg,#0a1f5c 0%,#1340a8 55%,#1a56c4 100%);
+    color:#fff;padding:26px 36px 22px;border-radius:16px;margin-bottom:28px;
+    text-align:center;box-shadow:0 6px 28px rgba(10,31,92,.40);
+    position:relative;overflow:hidden;
+  }
+  .hdr::before{
+    content:'';position:absolute;top:-40px;right:-40px;
+    width:200px;height:200px;border-radius:50%;
+    background:rgba(255,255,255,.06);pointer-events:none;
+  }
+  .hdr::after{
+    content:'';position:absolute;bottom:-60px;left:-30px;
+    width:180px;height:180px;border-radius:50%;
+    background:rgba(255,255,255,.04);pointer-events:none;
+  }
+  .hdr-logo{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px}
+  .hdr-divider{color:rgba(255,255,255,.4);font-size:22px;font-weight:300}
+  .hdr-brand{font-size:18px;font-weight:800;letter-spacing:3px;color:rgba(255,255,255,.92);text-transform:uppercase}
+  .hdr h1{font-size:24px;font-weight:800;letter-spacing:.6px;margin-bottom:8px;text-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .hdr p{font-size:13.5px;opacity:.82;letter-spacing:.3px}
+  /* ── SECTION ── */
+  .section{
+    background:#fff;border-radius:14px;padding:24px 28px;margin-bottom:22px;
+    box-shadow:0 2px 14px rgba(0,0,0,.07);
+    border-top:4px solid transparent;
+    border-image:linear-gradient(90deg,#1340a8,#EE0033) 1;
+  }
+  .sec-title{font-size:18px;font-weight:800;color:#0a1f5c;margin-bottom:6px;padding-bottom:10px;border-bottom:2px solid #e4eaf8;display:flex;align-items:center;gap:8px}
+  .sec-desc{font-size:12.5px;color:#778;margin-bottom:14px;font-style:italic}
+  /* ── TABLE ── */
+  .scroll-box{overflow-y:auto;max-height:560px;border-radius:8px;border:1px solid #dde;box-shadow:inset 0 2px 6px rgba(0,0,0,.04)}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
-  th{background:#0d2b6b;color:#fff;padding:10px 12px;text-align:center;white-space:nowrap;font-size:13.5px;font-weight:700;position:sticky;top:0;z-index:2}
-  td{padding:8px 12px;border:1px solid #dde;text-align:center;vertical-align:middle}
-  tr:nth-child(even) td{background:#f4f7ff}
-  tr:hover td{background:#e3eaff!important}
+  th{
+    background:linear-gradient(180deg,#1340a8,#0a2078);
+    color:#fff;padding:10px 12px;text-align:center;
+    white-space:nowrap;font-size:13px;font-weight:700;
+    position:sticky;top:0;z-index:2;
+    border-bottom:2px solid rgba(255,255,255,.15);
+  }
+  td{padding:8px 12px;border:1px solid #e4eaf4;text-align:center;vertical-align:middle}
+  tr:nth-child(even) td{background:#f5f8ff}
+  tr:hover td{background:#e6eeff!important;transition:background .15s}
   .left{text-align:left!important}
   .bold{font-weight:700}
-  .grand-total td{background:#0d2b6b!important;color:#fff!important;font-weight:800!important;font-size:14.5px!important}
-  .red-row td{background:#ffe5e5!important;color:#900!important;font-weight:600}
+  .grand-total td{
+    background:linear-gradient(90deg,#0a1f5c,#1340a8)!important;
+    color:#fff!important;font-weight:800!important;font-size:14px!important;
+    border-color:#1340a8!important;
+  }
+  .red-row td{background:#fff0f0!important;color:#8b0000!important;font-weight:600}
   .red-cell{background:#e53e3e!important;color:#fff!important;font-weight:800!important;border-radius:4px}
   .up{color:#e53e3e;font-weight:700}
   .dn{color:#2e7d32;font-weight:700}
   .up2{color:#2e7d32;font-weight:700}
   .dn2{color:#e53e3e;font-weight:700}
-  .neutral{color:#666}
-  .analysis{margin-top:16px;padding:14px 18px;background:#f0f5ff;border-left:4px solid #1a56c4;border-radius:6px;font-size:13.5px;line-height:1.8;color:#333}
-  .analysis b{color:#0d2b6b}
+  .neutral{color:#aaa}
+  .analysis{
+    margin-top:16px;padding:14px 18px;
+    background:linear-gradient(135deg,#f0f5ff,#fafcff);
+    border-left:4px solid #1340a8;border-radius:8px;
+    font-size:13.5px;line-height:1.9;color:#333;
+    box-shadow:0 1px 6px rgba(0,0,0,.06);
+  }
+  .analysis b{color:#0a1f5c}
   .bat-on-tag{background:#e53e3e;color:#fff;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:700;margin-left:4px}
   .loading{text-align:center;padding:60px;color:#555;font-size:16px}
-  .sub-title{font-size:16px;font-weight:700;color:#0d2b6b;margin:20px 0 10px;padding:8px 0;border-bottom:2px solid #cdd8f5}
+  .sub-title{
+    font-size:15px;font-weight:700;color:#0a1f5c;margin:20px 0 10px;
+    padding:8px 12px;border-radius:6px;
+    background:linear-gradient(90deg,#eef2ff,#f8f0ff);
+    border-left:3px solid #EE0033;
+  }
 </style>
 </head>
 <body>
 
 <div class="hdr">
-  <h1>📊 DASHBOARD VẬN HÀNH TỔNG QUAN VÙNG XBG</h1>
+  <div class="hdr-logo">
+    <svg width="110" height="36" viewBox="0 0 110 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="GHN Logo">
+      <!-- GHN brand logo SVG recreation -->
+      <rect width="110" height="36" rx="6" fill="#EE0033"/>
+      <text x="10" y="26" font-family="Arial Black,Arial,sans-serif" font-size="22" font-weight="900" fill="#fff" letter-spacing="2">GHN</text>
+    </svg>
+    <span class="hdr-divider">|</span>
+    <span class="hdr-brand">VÙNG XBG</span>
+  </div>
+  <h1>📊 DASHBOARD VẬN HÀNH TỔNG QUAN</h1>
   <p>So sánh Tuần 24 (2026/24) và Tuần 25 (2026/25) &nbsp;|&nbsp; Cập nhật: 22/06/2026</p>
 </div>
 
@@ -229,9 +285,9 @@ function buildGTCByAM(data){
     return ga-gb;
   });
 
-  // Grand total
-  const all24=data.filter(r=>r['Time']==='2026/24');
-  const all25=data.filter(r=>r['Time']==='2026/25');
+  // Grand total (exclude Grand Total row from data)
+  const all24=data.filter(r=>r['Time']==='2026/24'&&!((r['Chi tiết']||'').toLowerCase().includes('grand total')));
+  const all25=data.filter(r=>r['Time']==='2026/25'&&!((r['Chi tiết']||'').toLowerCase().includes('grand total')));
   const wAvg=(rows,f)=>{const tot=rows.reduce((s,r)=>s+num(r['Volume']),0);const w=rows.reduce((s,r)=>s+num(r['Volume'])*pct(r[f])/100,0);return tot>0?w/tot*100:0;};
   const gt24={vol:all24.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all24,'% GTC'),gan:wAvg(all24,'% Gán'),tra:wAvg(all24,'% Chuyển trả')};
   const gt25={vol:all25.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all25,'% GTC'),gan:wAvg(all25,'% Gán'),tra:wAvg(all25,'% Chuyển trả')};
@@ -298,8 +354,8 @@ function buildGTCByBC(data){
   const bcs=Object.keys(map).filter(b=>b&&b.trim()&&!b.toLowerCase().includes('grand total'));
   bcs.sort((a,b)=>(map[a]?.['2026/25']?.gtc||0)-(map[b]?.['2026/25']?.gtc||0));
 
-  const all24=data.filter(r=>r['Time']==='2026/24');
-  const all25=data.filter(r=>r['Time']==='2026/25');
+  const all24=data.filter(r=>r['Time']==='2026/24'&&!((r['Chi tiết']||'').toLowerCase().includes('grand total')));
+  const all25=data.filter(r=>r['Time']==='2026/25'&&!((r['Chi tiết']||'').toLowerCase().includes('grand total')));
   const wAvg=(rows,f)=>{const tot=rows.reduce((s,r)=>s+num(r['Volume']),0);const w=rows.reduce((s,r)=>s+num(r['Volume'])*pct(r[f])/100,0);return tot>0?w/tot*100:0;};
   const gt24={vol:all24.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all24,'% GTC'),gan:wAvg(all24,'% Gán'),tra:wAvg(all24,'% Chuyển trả')};
   const gt25={vol:all25.reduce((s,r)=>s+num(r['Volume']),0),gtc:wAvg(all25,'% GTC'),gan:wAvg(all25,'% Gán'),tra:wAvg(all25,'% Chuyển trả')};
